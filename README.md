@@ -1,5 +1,7 @@
 # AtCoderSubmissionUserColorizer
 
+[![GreasyFork](https://img.shields.io/badge/GreasyFork-install-orange)](https://greasyfork.org/ja/scripts/397710-atcoder-submission-user-colorizer)
+
 AtCoderの提出一覧のユーザ名を色付けするUserScript．
 
 ![個別の提出](./img/submission_indiv.png)
