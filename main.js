@@ -6,6 +6,7 @@
 // @author       morio_prog
 // @match        https://atcoder.jp/contests/*/submissions*
 // @grant        none
+// @license      CC0
 // @require      http://ajax.googleapis.com/ajax/libs/jquery/3.3.0/jquery.min.js
 // ==/UserScript==
 
