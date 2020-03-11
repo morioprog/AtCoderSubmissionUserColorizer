@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         AtCoder Submission User Colorizer
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  提出一覧のユーザ名を色付けします
 // @author       morio_prog
 // @match        https://atcoder.jp/contests/*/submissions*
 // @grant        none
 // @license      CC0
-// @require      http://ajax.googleapis.com/ajax/libs/jquery/3.3.0/jquery.min.js
+// @require      https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js
+// @require      https://unpkg.com/lscache/lscache.min.js
 // ==/UserScript==
 
 function getcolor(rating) {
@@ -39,52 +40,67 @@ function getachrate(rating) {
     return ((rating - base) / 400) * 100;
 }
 
+function colorize(u, rating) {
+    /* */if (rating >= 4000) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown4000.gif">&nbsp;');
+    else if (rating >= 3600) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3600.gif">&nbsp;');
+    else if (rating >= 3200) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3200.gif">&nbsp;');
+    else {
+        var color = getcolor(rating);
+        var achrate = getachrate(rating);
+        $(u).before(`
+            <span style="
+                display: inline-block;
+                height: 12px;
+                width: 12px;
+                vertical-align: center;
+                border-radius: 50%;
+                border: solid 1px ${color};
+                background: -webkit-linear-gradient(
+                    bottom,
+                    ${color} 0%,
+                    ${color} ${achrate}%,
+                    rgba(255, 255, 255, 0.0) ${achrate}%,
+                    rgba(255, 255, 255, 0.0) 100%);
+            "></span>
+        `);
+    }
+    $(u).addClass(getcolorclass(rating));
+}
+
 $(function() {
     'use strict';
 
-    const baseurl = "https://atcoder.jp";
+    lscache.flushExpired();
 
     $('a[href*="/users"]').each(function(i, u) {
-        // 右上のマイプロフィールを省く
+        // Skip "My Profile"
         if ($(u).find('span').length) return true;
 
-        var uri = baseurl + $(this).attr('href');
-        $.ajax({
-            url: uri,
-            type: 'GET',
-            dataType: 'html'
-        })
-        .done(function(data) {
-            var parseHtml = $.parseHTML(data);
-            var $userpage = $(parseHtml);
-
-            var rating = parseInt($userpage.find('#main-container > div.row > div.col-sm-9 > table > tbody > tr:nth-child(2) > td > span').text(), 10);
-            if (isNaN(rating)) return true;
-
-            /* */if (rating >= 4000) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown4000.gif">&nbsp;');
-            else if (rating >= 3600) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3600.gif">&nbsp;');
-            else if (rating >= 3200) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3200.gif">&nbsp;');
-            else {
-                var color = getcolor(rating);
-                var achrate = getachrate(rating);
-                $(u).before(`
-                    <span style="
-                        display: inline-block;
-                        height: 12px;
-                        width: 12px;
-                        vertical-align: center;
-                        border-radius: 50%;
-                        border: solid 1px ${color};
-                        background: -webkit-linear-gradient(
-                            bottom,
-                            ${color} 0%,
-                            ${color} ${achrate}%,
-                            rgba(255, 255, 255, 0.0) ${achrate}%,
-                            rgba(255, 255, 255, 0.0) 100%);
-                    "></span>
-                `);
-            }
-            $(u).addClass(getcolorclass(rating));
-        });
+        var username = $(this).attr('href').slice(7);
+        var lskey = "rating-" + username;
+        var rating = lscache.get(lskey);
+        
+        if (rating === null) {
+            $.ajax({
+                url: "https://atcoder.jp" + $(this).attr('href') + "/history/json",
+                type: 'GET',
+                dataType: 'json'
+            })
+            .done(function(data) {
+                var ratedcount = data.length;
+                if (ratedcount == 0) {
+                    rating = 0;
+                } else {
+                    rating = data[ratedcount - 1]["NewRating"];
+                }
+                // 12 hours
+                lscache.set(lskey, rating, 12 * 60);
+            })
+            .then(function() {
+                colorize(u, rating);
+            });
+        } else {
+            colorize(u, rating);
+        }
     });
 });
