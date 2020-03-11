@@ -1,0 +1,2 @@
+# AtCoderSubmissionUserColorizer
+AtCoderの提出一覧のユーザ名を色付けします
