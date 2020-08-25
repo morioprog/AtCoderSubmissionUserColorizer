@@ -18,7 +18,7 @@ function getColor(rating) {
     if (rating >= 1200) return '#00C0C0';
     if (rating >=  800) return '#008000';
     if (rating >=  400) return '#804000';
-    if (rating >=    0) return '#808080';
+    if (rating >     0) return '#808080';
     return '#000000';
 }
 
@@ -30,7 +30,7 @@ function getColorClass(rating) {
     if (rating >= 1200) return 'user-cyan';
     if (rating >=  800) return 'user-green';
     if (rating >=  400) return 'user-brown';
-    if (rating >=    0) return 'user-gray';
+    if (rating >     0) return 'user-gray';
     return 'user-unrated';
 }
 
@@ -43,7 +43,7 @@ function colorize(u, rating) {
     /* */if (rating >= 4000) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown4000.gif">&nbsp;');
     else if (rating >= 3600) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3600.gif">&nbsp;');
     else if (rating >= 3200) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3200.gif">&nbsp;');
-    else {
+    else if (rating > 0) {
         const color = getColor(rating);
         const achRate = getAchRate(rating);
         $(u).before(`
