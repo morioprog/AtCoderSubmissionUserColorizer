@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AtCoder Submission User Colorizer
 // @namespace    https://github.com/morioprog
-// @version      1.1
+// @version      1.2
 // @description  提出一覧のユーザ名を色付けします
 // @author       morio_prog
 // @match        https://atcoder.jp/contests/*/submissions*
