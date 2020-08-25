@@ -13,7 +13,9 @@
 $(function() {
     'use strict';
 
-    lscache.flushExpired();
+    const lastUpdateKey = 'user-colorizer-ranking-last-update';
+    const rankingKey = 'user-colorizer-ranking';
+    const OUT_OF_RANK = Number.MAX_VALUE;   // > 100
 
     function getColor(rating) {
         if (rating >= 2800) return '#FF0000';
@@ -44,10 +46,11 @@ $(function() {
         return ((rating - base) / 400) * 100;
     }
 
-    function colorize(u, rating) {
-        /* */if (rating >= 4000) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown4000.gif">&nbsp;');
-        else if (rating >= 3600) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3600.gif">&nbsp;');
-        else if (rating >= 3200) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown3200.gif">&nbsp;');
+    function colorize(u, ranking, rating) {
+        /* */if (ranking <=   1) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown_champion.png">&nbsp;');
+        else if (ranking <=  10) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown_gold.png">&nbsp;');
+        else if (ranking <=  30) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown_silver.png">&nbsp;');
+        else if (ranking <= 100) $(u).before('<img style="vertical-align: middle;" src="//img.atcoder.jp/assets/icon/crown_bronze.png">&nbsp;');
         else if (rating > 0) {
             const color = getColor(rating);
             const achRate = getAchRate(rating);
@@ -71,34 +74,72 @@ $(function() {
         $(u).addClass(getColorClass(rating));
     }
 
-    $('a[href*="/users"]').each(function(_, u) {
-        // Skip "My Profile"
-        if ($(u).find('span').length) return true;
-        const userName = $(this).attr('href').slice(7);
-        const lskey = "rating-" + userName;
-        let rating = lscache.get(lskey);
-        if (rating === null) {
-            $.ajax({
-                url: "https://atcoder.jp" + $(this).attr('href') + "/history/json",
-                type: 'GET',
-                dataType: 'json'
-            })
-            .done(function(data) {
-                const ratedCount = data.length;
-                if (ratedCount == 0) {
-                    rating = 0;
-                } else {
-                    rating = data[ratedCount - 1]["NewRating"];
-                }
-                // Update every 3 hours
-                lscache.set(lskey, rating, 3 * 60);
-            })
-            .then(function() {
-                colorize(u, rating);
-            });
-        } else {
-            colorize(u, rating);
-        }
+    function getRankingMap() {
+        return new Promise(function(callback) {
+            const currentTime = new Date().getTime();
+            const lastUpdateTime = localStorage.getItem(lastUpdateKey);
+            // Update every 3 hours
+            if (lastUpdateTime && currentTime < Number(lastUpdateTime) + 3 * 60 * 60 * 1000) {
+                callback(JSON.parse(localStorage.getItem(rankingKey)));
+            } else {
+                let ranking = {};
+                $.ajax({
+                    url: "https://atcoder.jp/ranking",
+                    type: 'GET',
+                    dataType: 'html'
+                })
+                .done(function(data) {
+                    $($.parseHTML(data)).find('.username > span').each(function(idx) {
+                        const userName = $(this).text();
+                        ranking[userName] = idx + 1;
+                    });
+                })
+                .then(function() {
+                    localStorage.setItem(lastUpdateKey, currentTime);
+                    localStorage.setItem(rankingKey, JSON.stringify(ranking));
+                    callback(ranking);
+                });
+            }
+        });
+    }
+
+    function getRanking(rankingMap, userName) {
+        if (userName in rankingMap) return rankingMap[userName];
+        return OUT_OF_RANK;
+    }
+
+    lscache.flushExpired();
+    getRankingMap().then((rankingMap) => {
+        $('a[href*="/users"]').each(function(_, u) {
+            // Skip "My Profile"
+            if ($(u).find('span').length) return true;
+            const userName = $(this).attr('href').slice(7);
+            const lskey = "rating-" + userName;
+            const ranking = getRanking(rankingMap, userName);
+            let rating = lscache.get(lskey);
+            if (rating === null) {
+                $.ajax({
+                    url: "https://atcoder.jp" + $(this).attr('href') + "/history/json",
+                    type: 'GET',
+                    dataType: 'json'
+                })
+                .done(function(data) {
+                    const ratedCount = data.length;
+                    if (ratedCount == 0) {
+                        rating = 0;
+                    } else {
+                        rating = data[ratedCount - 1]["NewRating"];
+                    }
+                    // Update every 3 hours
+                    lscache.set(lskey, rating, 3 * 60);
+                })
+                .then(function() {
+                    colorize(u, ranking, rating);
+                });
+            } else {
+                colorize(u, ranking, rating);
+            }
+        });
     });
 
 });
